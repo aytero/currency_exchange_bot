@@ -1,0 +1,6 @@
+aiogram
+
+sqlalchemy
+
+#for loading environment variables
+python-dotenv
