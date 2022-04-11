@@ -15,6 +15,7 @@ from db.model import *
 from db.session import *
 
 from core.config import settings
+from core.phrases import phrases
 
 from core.validation import validate_charset, validate_name, name_in_names
 
@@ -98,13 +99,6 @@ class Info(StatesGroup):
     info = State()
 
 
-rates_info = (
-    '- Exchange rates -\n'
-    '- <b>RUB-USDT</b> – 0.012 usdt\n'
-    '- <b>USDT-RUB</b> – 80.87 rub\n'
-)
-
-
 @dp.callback_query_handler(vote_cb.filter(action='rates'))  # , state=State.in_account)
 async def inline_kb_creating(
         query: types.CallbackQuery,
@@ -112,10 +106,7 @@ async def inline_kb_creating(
         callback_data: typing.Dict[str, str]):
     await Info.info.set()
     await state.update_data(query=query)  # bot_id=callback_data.get('id'),
-    await query.message.edit_text(rates_info, reply_markup=create_menu())
-
-
-pick_country = 'Выберите страну'
+    await query.message.edit_text(phrases.rates_info, reply_markup=create_menu())
 
 
 @dp.callback_query_handler(vote_cb.filter(action='new'))  # , state=State.in_account)
@@ -126,7 +117,7 @@ async def inline_kb_creating(
     async with state.proxy() as data:
         await Editing.country.set()
         await state.update_data(query=query)  # bot_id=callback_data.get('id'),
-        await query.message.edit_text(pick_country, reply_markup=create_menu(Countries))
+        await query.message.edit_text(phrases.pick_country, reply_markup=create_menu(Countries))
 
 
 COUNTRY, CITY, CURRENCY = range(3)
@@ -178,16 +169,6 @@ def create_menu(table_type=None, country=None, search=False, rename=False,
     return btns
 
 
-pick_city = 'Выберите город'
-# err_input = f'Неверный ввод, попробуйте еще раз'
-pick_currency = f'Выберите валютную пару'
-pick_time = f'Выберите время:'
-pick_amount = f'Provide amount you want to exchange (sell):'
-confirmation_text = f'Confirm action:'
-# request_text = f'Provide date and time'
-# err_city = f'Incorrect input, enter again'
-
-
 @dp.message_handler(state=Editing.country)
 @dp.callback_query_handler(vote_cb.filter(action='country'), state='*')
 async def new_entry_account_manager(message: types.Message,
@@ -199,7 +180,7 @@ async def new_entry_account_manager(message: types.Message,
             data['country'] = callback_data['id']
 
         await query.message.edit_text(
-            pick_city, reply_markup=create_menu(Cities, country=data['country']))
+            phrases.pick_city, reply_markup=create_menu(Cities, country=data['country']))
         await Editing.next()
 
 
@@ -214,7 +195,7 @@ async def new_entry_account_manager(message: types.Message,
             data['city'] = callback_data['id']
 
         await query.message.edit_text(
-            pick_currency, reply_markup=create_menu(Currencies, country=data['country']))
+            phrases.pick_currency, reply_markup=create_menu(Currencies, country=data['country']))
         await Editing.next()
 
 
@@ -229,7 +210,7 @@ async def new_entry_account_manager(message: types.Message,
             data['currency'] = callback_data['id']
 
         await query.message.edit_text(
-            pick_time, reply_markup=create_menu(Slots, country=data['country']))
+            phrases.pick_time, reply_markup=create_menu(Slots, country=data['country']))
         await Editing.next()
 
 
@@ -244,7 +225,7 @@ async def new_entry_account_manager(message: types.Message,
             data['slot'] = callback_data['id']
 
         await query.message.edit_text(
-            pick_amount, reply_markup=create_menu(country=data['country']))
+            phrases.pick_amount, reply_markup=create_menu(country=data['country']))
         await Editing.next()
 
 
