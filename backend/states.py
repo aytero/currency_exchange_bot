@@ -10,6 +10,7 @@ class Editing(StatesGroup):
     date = State()
     time = State()
     confirmation = State()
+    # notify = State()
 
 
 class Info(StatesGroup):

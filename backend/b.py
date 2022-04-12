@@ -44,64 +44,9 @@ def is_admin(name: str) -> bool:
 
 def get_keyboard(amount, edit=False):
     t = types.InlineKeyboardMarkup()
-    t.add(types.InlineKeyboardButton('Обменять наличные',    callback_data=vote_cb.new(action='new', id=amount)))
-    t.add(types.InlineKeyboardButton('Курс обмена', callback_data=vote_cb.new(action='rates', id=amount)))
-    return t
-
-
-def add_emoji(name):
-    return phrases.emoji[name] + " " + name
-
-
-def get_country_keyboard():
-    t = types.InlineKeyboardMarkup()
-    # id = name of the country
-    # idx = 0
-    for country in db_dict['countries']:
-        t.add(types.InlineKeyboardButton(add_emoji(country), callback_data=vote_cb.new(action='country', id=country)))
-        # idx += 1
-    return t
-
-
-def get_city_keyboard(callback_data):
-    t = types.InlineKeyboardMarkup()
-    # id = name of the city
-    countries = db_dict['cities']
-    cities = countries[callback_data['id']]
-    for city in cities:
-        t.add(types.InlineKeyboardButton(city, callback_data=vote_cb.new(action='city', id=city)))
-    return t
-
-
-def get_currency_to_sell_keyboard():
-    t = types.InlineKeyboardMarkup()
-    # id = name of the currency
-    for currency in db_dict['currencies']:
-        t.add(types.InlineKeyboardButton(currency, callback_data=vote_cb.new(action='currency_to_sell', id=currency)))
-    return t
-
-
-def get_currency_to_buy_keyboard():
-    t = types.InlineKeyboardMarkup()
-    # id = name of the currency
-    for currency in db_dict['currencies']:
-        t.add(types.InlineKeyboardButton(currency, callback_data=vote_cb.new(action='currency_to_buy', id=currency)))
-    return t
-
-
-def get_date_keyboard():
-    t = types.InlineKeyboardMarkup()
-    # id = name of the currency
-    for date in db_dict['date']:
-        t.add(types.InlineKeyboardButton(date, callback_data=vote_cb.new(action='date', id=date)))
-    return t
-
-
-def get_time_keyboard():
-    t = types.InlineKeyboardMarkup()
-    # id = name of the currency
-    for time_slot in db_dict['time_slots']:
-        t.add(types.InlineKeyboardButton(time_slot, callback_data=vote_cb.new(action='time', id=time_slot)))
+    t.add(types.InlineKeyboardButton('💶 Обменять наличные',    callback_data=vote_cb.new(action='new', id=amount)))
+    t.add(types.InlineKeyboardButton('Операции с картами', callback_data=vote_cb.new(action='card', id=amount)))
+    t.add(types.InlineKeyboardButton('📊 Курс обмена', callback_data=vote_cb.new(action='rates', id=amount)))
     return t
 
 
@@ -143,7 +88,13 @@ def chunks(lst, n):
         yield lst[i:i + n]
 
 
-def create_buttons_lst(table_type) -> list:
+def add_emoji(name, table_type):
+    if 'country' in table_type:
+        return phrases.emoji[name] + " " + name
+    return name
+
+
+def create_buttons_lst(table_type, data=None) -> list:
 
     action = {
         'city': 'city',
@@ -156,37 +107,48 @@ def create_buttons_lst(table_type) -> list:
         'confirm': 'confirm',
     }[table_type]
 
-    # if rename:
-    #     action = "e_" + action
-    # elif search:
-    #     action = "s_" + action
-
     btns_lst = []
+
     locs = db_dict[table_type]
-    # locs = session.query(table_type)
-    # if 'city' in action:
-    #     logger.info("city in action")
-    #     locs = locs.join(Countries).filter(Countries.name == country)
+
+    if 'city' in action:
+        country = data['country']
+        locs = locs[country]
+
+    if 'currency_to_buy' in action:
+        cur = data['currency_to_sell']
+        locs.remove(cur)
     for loc in locs:
         btn = types.InlineKeyboardButton(
-            loc, callback_data=vote_cb.new(loc, action=action)
+            add_emoji(loc, table_type), callback_data=vote_cb.new(loc, action=action)
         )
         btns_lst.append(btn)
     return btns_lst
 
 
-def create_menu(table_type=None, confirmation=False):
+def create_menu(data=None, table_type=None, confirmation=False, btns_in_row=3):
     btns = types.InlineKeyboardMarkup()
     if table_type:
-        for couple in chunks(create_buttons_lst(table_type), 3):
+        for couple in chunks(create_buttons_lst(table_type, data), btns_in_row):
             btns.row(*couple)
-    if confirmation:  # TODO change var name also TODO delete unconfirmed records
+
+    if confirmation:
         btns.row(types.InlineKeyboardButton(
-            "Yes", callback_data=vote_cb.new("no", action='conf')))
+            "Да", callback_data=vote_cb.new("no", action='conf')))
+
     btns.row(types.InlineKeyboardButton(
-            "Back", callback_data=vote_cb.new("no", action='exit')
+            "Назад", callback_data=vote_cb.new("no", action='exit')
         ))
     return btns
+
+
+@dp.callback_query_handler(vote_cb.filter(action='card'))  # , state=State.in_account)
+async def inline_kb_creating(
+        query: types.CallbackQuery,
+        state: FSMContext,
+        callback_data: typing.Dict[str, str]):
+    await state.update_data(query=query)  # bot_id=callback_data.get('id'),
+    await query.message.edit_text(phrases.under_construction, reply_markup=create_menu())
 
 
 @dp.callback_query_handler(vote_cb.filter(action='rates'))  # , state=State.in_account)
@@ -207,7 +169,8 @@ async def inline_kb_creating(
     async with state.proxy() as data:
         await Editing.country.set()
         await state.update_data(query=query)  # bot_id=callback_data.get('id'),
-        await query.message.edit_text(phrases.pick_country, reply_markup=get_country_keyboard())
+        await query.message.edit_text(phrases.pick_country,
+                                      reply_markup=create_menu(table_type='country', btns_in_row=1))
 
 
 COUNTRY, CITY, CURRENCY = range(3)
@@ -224,7 +187,7 @@ async def new_entry_account_manager(message: types.Message,
             data['country'] = callback_data['id']
 
         await query.message.edit_text(
-            phrases.pick_city, reply_markup=get_city_keyboard(callback_data))
+            phrases.pick_city, reply_markup=create_menu(data=data, table_type='city', btns_in_row=2))
         await Editing.next()
 
 
@@ -238,9 +201,8 @@ async def new_entry_account_manager(message: types.Message,
         if callback_data:
             data['city'] = callback_data['id']
 
-        # TODO sell -> amount -> buy
         await query.message.edit_text(
-            phrases.pick_currency_to_sell, reply_markup=get_currency_to_sell_keyboard())
+            phrases.pick_currency_to_sell, reply_markup=create_menu(table_type='currency_to_sell'))
         await Editing.next()
 
 
@@ -272,7 +234,8 @@ async def new_entry_account_manager(message: types.Message,
 
         await delete_msg(message.chat.id, message.message_id)
         await query.message.edit_text(
-            phrases.pick_currency_to_buy, reply_markup=get_currency_to_buy_keyboard())
+            phrases.pick_currency_to_buy,
+            reply_markup=create_menu(data=data, table_type='currency_to_buy'))
         await Editing.next()
 
 
@@ -287,8 +250,7 @@ async def new_entry_account_manager(message: types.Message,
             data['currency_to_buy'] = callback_data['id']
 
         await query.message.edit_text(
-            phrases.pick_date, reply_markup=create_menu('date'))
-            # phrases.pick_date, reply_markup=get_date_keyboard())
+            phrases.pick_date, reply_markup=create_menu(table_type='date'))
         await Editing.next()
 
 
@@ -303,20 +265,24 @@ async def new_entry_account_manager(message: types.Message,
             data['date'] = callback_data['id']
 
         await query.message.edit_text(
-            phrases.pick_time, reply_markup=get_time_keyboard())
+            phrases.pick_time, reply_markup=create_menu(table_type='time', btns_in_row=1))
         await Editing.next()
 
 
-# TODO do not delete the summary from the user. Make second mode without question to edit msg
-def display_summary(info=None, ask=False):
-    msg = f'Here is your appointment summary: \n'
-    if info:
-        msg += f"Страна: <b>{info['country']}</b>\n"
-        msg += f"Город: <b>{info['city']}</b>\n"
-        msg += f"Продать: <b>{info['amount']} {info['currency_to_sell']}</b>\n"
-        # calculate according to binance rates
-        msg += f"Получить: <b>{info['currency_to_buy']}</b>\n"
-        msg += f"Дата и время: <b>{info['date']} {info['time']}</b>\n"
+# TODO ping admin
+# TODO back button for one step
+# TODO input validation
+def display_summary(data, ask=False, username=False):
+
+    msg = f'Детали встречи: \n'
+    msg += f"Страна: <b>{data['country']}</b>\n"
+    msg += f"Город: <b>{data['city']}</b>\n"
+    msg += f"Продать: <b>{data['amount']} {data['currency_to_sell']}</b>\n"
+    # calculate according to binance rates
+    msg += f"Получить: <b>{data['currency_to_buy']}</b>\n"
+    msg += f"Дата и время: <b>{data['date']} {data['time']}</b>\n"
+    if username:
+        msg += f"Заказчик: @{data['query']['from']['username']}"
     if ask:
         msg += f'\n<b>Подтвердить?</b> \n'
     return msg
@@ -332,32 +298,37 @@ async def new_entry_account_manager(message: types.Message,
         if callback_data:
             data['time'] = callback_data['id']
 
-        info = {'country': data['country'],
-                'city': data['city'],
-                'currency_to_sell': data['currency_to_sell'],
-                'currency_to_buy': data['currency_to_buy'],
-                'amount': data['amount'],
-                'date': data['date'],
-                'time': data['time'],
-                }
-
         await query.message.edit_text(
-            display_summary(info, ask=True), reply_markup=create_menu(confirmation=True))
+            display_summary(data, ask=True), reply_markup=create_menu(confirmation=True))
         await Editing.next()
+
+admin_id = '249747747'
 
 
 @dp.message_handler(state=Editing.confirmation)
 @dp.callback_query_handler(vote_cb.filter(action='conf'), state='*')
 async def new_entry_account_manager(message: types.Message, state: FSMContext):
 
+    # await bot.send_message(chat_id='aytero, text='Test', parse_mode='html')
+
     async with state.proxy() as data:
-        # await bot.forward_message(chat_id='aytero', from_chat_id=message.from_user.id, message_id=message.message_id)
-        # await bot.send_message(message.from_user.id, "test message")
-        await data.get('query').message.edit_text("Запись успешно добавлена!",
-                                                  parse_mode='html',
-                                                  reply_markup=get_keyboard(0),
-                                                  )
+
+        # print(message.from_user.id)
+        query = data.get('query')
+
+        await delete_msg(query.message.chat.id, query.message.message_id)
+
+        await bot.send_message(query.from_user.id, phrases.success, parse_mode='html')
+        await bot.send_message(query.from_user.id, display_summary(data), parse_mode='html')
+
+        await bot.send_message(chat_id=admin_id, text=display_summary(data, username=True), parse_mode='html')
+        # await bot.forward_message(chat_id='249747747',
+        #                           from_chat_id=query.message.chat.id, message_id=query.message.message_id)
+        # await query.message.reply(welcome, reply_markup=get_keyboard(0), reply=False, parse_mode='html')
+
+        await bot.send_message(message.from_user.id, welcome, reply_markup=get_keyboard(0))
         await Editing.next()
+        # await state.finish()
 
 
 @dp.callback_query_handler(vote_cb.filter(action='exit'), state="*")  # , state=State.in_account)
@@ -365,20 +336,10 @@ async def inline_kb_creating(query: types.CallbackQuery,
                              state: FSMContext,
                              callback_data: typing.Dict[str, str]):
     await state.finish()
+    # await state.
     await query.message.edit_text(welcome, reply_markup=get_keyboard(0),
                                   parse_mode='html'
                                   )
-
-
-@dp.callback_query_handler(vote_cb.filter(action='delete'))  # , state=State.in_account)
-async def inline_kb_creating(query: types.CallbackQuery,
-                             state: FSMContext,
-                             callback_data: typing.Dict[str, str]):
-    # n = session.query(User).filter(User.id == callback_data['id']).first()
-    # if n:
-    #     session.delete(n)
-    #     session.commit()
-    await delete_msg(query.message.chat.id, query.message.message_id)
 
 
 if __name__ == '__main__':
