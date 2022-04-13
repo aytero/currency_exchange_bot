@@ -1,13 +1,19 @@
 
-countries = ['Россия', 'Турция', 'Грузия']
+countries = ['Россия', 'Турция', 'Грузия', 'Кипр']
 
 cities = {
     'Россия': ['Москва', 'Санкт-Петербург', 'Владимир'],
     'Турция': ['Каш', 'Стамбул', 'Анаталия', 'Калкан'],
     'Грузия': ['Тбилиси', 'Батуми'],
+    'Кипр': ['Лимасол', 'Никосия'],
 }
 
-currencies = ['RUB', 'USDT', 'TRY', 'GEL', 'BTC']
+fiat = ['RUB', 'USD', 'EUR', 'TRY', 'GEL']
+crypto = ['USDT', 'BTC', 'ETH', 'Other crypto']
+currency = {'fiat': fiat, 'crypto': crypto}
+
+currencies = ['RUB', 'USD', 'EUR', 'TRY', 'GEL',
+              'USDT', 'BTC', 'ETH', 'Other crypto']
 
 date = [
     '1 апреля', '2 апреля', '3 апреля',
@@ -28,5 +34,6 @@ db_dict = {'country': countries,
            'currency_to_buy': currencies,
            'currency_to_sell': currencies,
            'date': date,
-           'time': time_slots
+           'time': time_slots,
+           'currency': currency,
            }

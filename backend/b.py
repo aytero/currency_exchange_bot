@@ -59,6 +59,7 @@ async def delete_msg(chat_id, msg_id):
 
 async def set_commands(dispatcher):
     commands = [types.BotCommand(command="/start", description="refresh bot")]
+    commands = [types.BotCommand(command="/help", description="справка")]
     await bot.set_my_commands(commands)
 
 
@@ -66,21 +67,19 @@ async def set_commands(dispatcher):
 async def message_not_modified_handler(update, error):
     return True
 
-welcome = (
-    '- Меню -\n'
-    # '- Нажмите <b>add</b>, чтобы добавить нового участника.\n'
-    # '- Нажмите <b>search by location</b>, чтобы найти единомышленника по городу.\n'
-    # '- Нажмите <b>search by words</b>, чтобы найти единомышленника по ключевым словам.\n'
-    # '- Нажмите <b>edit</b>, чтобы редактировать свою информацию.\n'
-    )
-
 
 @dp.message_handler(commands='start')
 async def cmd_start(message: types.Message):
-    await message.reply(welcome, reply_markup=get_keyboard(0), reply=False,
+    await message.reply(phrases.welcome, reply_markup=get_keyboard(0), reply=False,
                         parse_mode='html'
                         )
 
+
+@dp.message_handler(commands='help')
+async def cmd_start(message: types.Message):
+    await message.reply(phrases.help, reply_markup=get_keyboard(0), reply=False,
+                        parse_mode='html'
+                        )
 
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
@@ -90,12 +89,13 @@ def chunks(lst, n):
 
 def add_emoji(name, table_type):
     if 'country' in table_type:
-        return phrases.emoji[name] + " " + name
+        return phrases.emoji.get(name) + " " + name
     return name
 
 
 def create_buttons_lst(table_type, data=None) -> list:
 
+    # TODO remove this extra code
     action = {
         'city': 'city',
         'country': 'country',
@@ -112,12 +112,20 @@ def create_buttons_lst(table_type, data=None) -> list:
     locs = db_dict[table_type]
 
     if 'city' in action:
-        country = data['country']
-        locs = locs[country]
+        country = data.get('country')
+        locs = locs.get(country)
 
+    if 'currency' in action:
+        crypto = db_dict['currency']['crypto']
+        fiat = db_dict['currency']['fiat']
+        locs = crypto + fiat
+
+    # TODO fix: removes currency every iteration if 'back' pressed
     if 'currency_to_buy' in action:
-        cur = data['currency_to_sell']
-        locs.remove(cur)
+        cur = data.get('currency_to_sell')
+        if 'Other' not in cur:
+            locs.remove(cur)
+
     for loc in locs:
         btn = types.InlineKeyboardButton(
             add_emoji(loc, table_type), callback_data=vote_cb.new(loc, action=action)
@@ -126,7 +134,7 @@ def create_buttons_lst(table_type, data=None) -> list:
     return btns_lst
 
 
-def create_menu(data=None, table_type=None, confirmation=False, btns_in_row=3):
+def create_menu(data=None, table_type=None, confirmation=False, btns_in_row=3, prev_action="exit"):
     btns = types.InlineKeyboardMarkup()
     if table_type:
         for couple in chunks(create_buttons_lst(table_type, data), btns_in_row):
@@ -134,46 +142,79 @@ def create_menu(data=None, table_type=None, confirmation=False, btns_in_row=3):
 
     if confirmation:
         btns.row(types.InlineKeyboardButton(
-            "Да", callback_data=vote_cb.new("no", action='conf')))
+            "✅ Да", callback_data=vote_cb.new("no", action='conf')))
 
     btns.row(types.InlineKeyboardButton(
-            "Назад", callback_data=vote_cb.new("no", action='exit')
-        ))
+            "⬅ Назад", callback_data=vote_cb.new(action=prev_action, id='0')
+            # "Назад", callback_data=vote_cb.new("no", action='back')
+    ))
+    btns.row(types.InlineKeyboardButton(
+        "🚫 Отмена", callback_data=vote_cb.new("no", action='exit')
+    ))
     return btns
 
 
-@dp.callback_query_handler(vote_cb.filter(action='card'))  # , state=State.in_account)
+# @dp.callback_query_handler(vote_cb.filter(action='back'))  # , state=State.in_account)
+# async def inline_kb_creating(query: types.CallbackQuery,
+#                              state: FSMContext,
+#                              callback_data: typing.Dict[str, str]):
+#     # await state.finish()
+#     # state.reset_state()
+#     await query.message.edit_text(text='backk', reply_markup=None,
+#                                   parse_mode='html'
+#                                   )
+
+
+@dp.callback_query_handler(vote_cb.filter(action='card'))
 async def inline_kb_creating(
         query: types.CallbackQuery,
         state: FSMContext,
         callback_data: typing.Dict[str, str]):
-    await state.update_data(query=query)  # bot_id=callback_data.get('id'),
+    await state.update_data(query=query)
     await query.message.edit_text(phrases.under_construction, reply_markup=create_menu())
 
 
-@dp.callback_query_handler(vote_cb.filter(action='rates'))  # , state=State.in_account)
+@dp.callback_query_handler(vote_cb.filter(action='rates'))
 async def inline_kb_creating(
         query: types.CallbackQuery,
         state: FSMContext,
         callback_data: typing.Dict[str, str]):
     await Info.info.set()
-    await state.update_data(query=query)  # bot_id=callback_data.get('id'),
+    await state.update_data(query=query)
     await query.message.edit_text(phrases.rates_info, reply_markup=create_menu())
 
 
-@dp.callback_query_handler(vote_cb.filter(action='new'))  # , state=State.in_account)
+@dp.callback_query_handler(vote_cb.filter(action='new'))
 async def inline_kb_creating(
         query: types.CallbackQuery,
         state: FSMContext,
         callback_data: typing.Dict[str, str]):
     async with state.proxy() as data:
         await Editing.country.set()
-        await state.update_data(query=query)  # bot_id=callback_data.get('id'),
+        await state.update_data(query=query)
         await query.message.edit_text(phrases.pick_country,
-                                      reply_markup=create_menu(table_type='country', btns_in_row=1))
+                                      reply_markup=create_menu(table_type='country', btns_in_row=2))
 
 
-COUNTRY, CITY, CURRENCY = range(3)
+# TODO switch places: cur to buy -> cur to sell -> amount
+# TODO exchange rate for chosen opts
+# TODO /start cmd should also reset state
+# TODO something's wrong with states tho it works
+def display_summary(data, ask=False, username=False, phrase=''):
+
+    msg = f'Детали сделки: \n'
+    msg += f"Страна: <b>{data.get('country', '')}</b>\n"
+    msg += f"Город: <b>{data.get('city', '')}</b>\n"
+    msg += f"⏩ Продать: <b>{data.get('amount', '')} {data.get('currency_to_sell', '')}</b>\n"
+    # calculate according to binance rates
+    msg += f"⏪ Получить: <b>{data.get('currency_to_buy', '')}</b>\n"
+    msg += f"Дата и время: <b>{data.get('date', '')} {data.get('time', '')}</b>\n"
+    if username:
+        msg += f"Заказчик: @{data['query']['from']['username']}"
+    msg += '\n'
+    if ask:
+        msg += f'<b>Подтвердить?</b> \n'
+    return msg + phrase
 
 
 @dp.message_handler(state=Editing.country)
@@ -183,11 +224,15 @@ async def new_entry_account_manager(message: types.Message,
                                     callback_data: typing.Dict[str, str] = None):
     async with state.proxy() as data:
         query = data.get('query')
-        if callback_data:
-            data['country'] = callback_data['id']
+        if callback_data and callback_data.get('id') != '0':
+            data['country'] = callback_data.get('id', '')
 
         await query.message.edit_text(
-            phrases.pick_city, reply_markup=create_menu(data=data, table_type='city', btns_in_row=2))
+            display_summary(data=data, phrase=phrases.pick_city),
+            reply_markup=create_menu(data=data, table_type='city', btns_in_row=2))
+        # if callback_data and callback_data.get('id') == '0':
+        #     await Editing.country.set()
+        # new_state = FSMContext(storage, query.message.chat.id, query.from_user.id)
         await Editing.next()
 
 
@@ -198,27 +243,34 @@ async def new_entry_account_manager(message: types.Message,
                                     callback_data: typing.Dict[str, str] = None):
     async with state.proxy() as data:
         query = data.get('query')
-        if callback_data:
+        if callback_data and callback_data.get('id') != '0':
             data['city'] = callback_data['id']
 
         await query.message.edit_text(
-            phrases.pick_currency_to_sell, reply_markup=create_menu(table_type='currency_to_sell'))
+            display_summary(phrase=phrases.pick_currency_to_sell, data=data),
+            reply_markup=create_menu(table_type='currency_to_sell', prev_action='country'))
+        if callback_data and callback_data.get('id') == '0':
+            await Editing.city.set()
         await Editing.next()
 
 
-@dp.message_handler(state=Editing.currency_to_buy)
+@dp.message_handler(state=Editing.currency_to_sell)
 @dp.callback_query_handler(vote_cb.filter(action='currency_to_sell'), state='*')
 async def new_entry_account_manager(message: types.Message,
                                     state: FSMContext,
                                     callback_data: typing.Dict[str, str] = None):
     async with state.proxy() as data:
         query = data.get('query')
-        if callback_data:
+        if callback_data and callback_data.get('id') != '0':
             data['currency_to_sell'] = callback_data['id']
 
         await query.message.edit_text(
-            phrases.pick_amount, reply_markup=create_menu())
+            display_summary(phrase=phrases.pick_amount, data=data), reply_markup=create_menu(prev_action='city'))
+        if callback_data and callback_data.get('id') == '0':
+            await Editing.currency_to_sell.set()
         await Editing.next()
+        # if callback_data and callback_data.get('id') == '0':
+        #     await Editing.currency_to_sell.set()
 
 
 @dp.message_handler(state=Editing.amount)
@@ -229,28 +281,41 @@ async def new_entry_account_manager(message: types.Message,
     async with state.proxy() as data:
         query = data.get('query')
 
-        input_amount = message.text
-        data['amount'] = input_amount
+        cur_state = await state.get_state()
 
-        await delete_msg(message.chat.id, message.message_id)
+        if cur_state == 'Editing:amount':
+            input_amount = message.text
+            if not input_amount.replace(".", "", 1).isdigit():
+                await delete_msg(message.chat.id, message.message_id)
+                await query.message.edit_text(
+                    display_summary(phrase=phrases.err_amount, data=data), reply_markup=create_menu(prev_action='city'))
+                return
+            data['amount'] = message.text  # int()
+            await delete_msg(message.chat.id, message.message_id)
+
         await query.message.edit_text(
-            phrases.pick_currency_to_buy,
-            reply_markup=create_menu(data=data, table_type='currency_to_buy'))
+            display_summary(phrase=phrases.pick_currency_to_buy, data=data),
+            reply_markup=create_menu(data=data, table_type='currency_to_buy', prev_action='currency_to_sell'))
+        if callback_data and callback_data.get('id') == '0':
+            await Editing.amount.set()
         await Editing.next()
 
 
-@dp.message_handler(state=Editing.currency_to_sell)
+@dp.message_handler(state=Editing.currency_to_buy)
 @dp.callback_query_handler(vote_cb.filter(action='currency_to_buy'), state='*')
 async def new_entry_account_manager(message: types.Message,
                                     state: FSMContext,
                                     callback_data: typing.Dict[str, str] = None):
     async with state.proxy() as data:
         query = data.get('query')
-        if callback_data:
+        if callback_data and callback_data.get('id') != '0':
             data['currency_to_buy'] = callback_data['id']
 
         await query.message.edit_text(
-            phrases.pick_date, reply_markup=create_menu(table_type='date'))
+            display_summary(phrase=phrases.pick_date, data=data),
+            reply_markup=create_menu(table_type='date', prev_action='amount'))
+        if callback_data and callback_data.get('id') == '0':
+            await Editing.currency_to_buy.set()
         await Editing.next()
 
 
@@ -261,31 +326,15 @@ async def new_entry_account_manager(message: types.Message,
                                     callback_data: typing.Dict[str, str] = None):
     async with state.proxy() as data:
         query = data.get('query')
-        if callback_data:
+        if callback_data and callback_data.get('id') != '0':
             data['date'] = callback_data['id']
 
         await query.message.edit_text(
-            phrases.pick_time, reply_markup=create_menu(table_type='time', btns_in_row=1))
+            display_summary(phrase=phrases.pick_time, data=data),
+            reply_markup=create_menu(table_type='time', btns_in_row=1, prev_action='currency_to_buy'))
+        if callback_data and callback_data.get('id') == '0':
+            await Editing.date.set()
         await Editing.next()
-
-
-# TODO ping admin
-# TODO back button for one step
-# TODO input validation
-def display_summary(data, ask=False, username=False):
-
-    msg = f'Детали встречи: \n'
-    msg += f"Страна: <b>{data['country']}</b>\n"
-    msg += f"Город: <b>{data['city']}</b>\n"
-    msg += f"Продать: <b>{data['amount']} {data['currency_to_sell']}</b>\n"
-    # calculate according to binance rates
-    msg += f"Получить: <b>{data['currency_to_buy']}</b>\n"
-    msg += f"Дата и время: <b>{data['date']} {data['time']}</b>\n"
-    if username:
-        msg += f"Заказчик: @{data['query']['from']['username']}"
-    if ask:
-        msg += f'\n<b>Подтвердить?</b> \n'
-    return msg
 
 
 @dp.message_handler(state=Editing.time)
@@ -295,25 +344,26 @@ async def new_entry_account_manager(message: types.Message,
                                     callback_data: typing.Dict[str, str] = None):
     async with state.proxy() as data:
         query = data.get('query')
-        if callback_data:
+        if callback_data and callback_data.get('id') != '0':
             data['time'] = callback_data['id']
 
         await query.message.edit_text(
-            display_summary(data, ask=True), reply_markup=create_menu(confirmation=True))
+            display_summary(data=data, ask=True), reply_markup=create_menu(confirmation=True, prev_action='date'))
+        if callback_data and callback_data.get('id') == '0':
+            await Editing.time.set()
         await Editing.next()
 
-admin_id = '249747747'
+admin_id = '249747747'  # aytero
 
 
 @dp.message_handler(state=Editing.confirmation)
 @dp.callback_query_handler(vote_cb.filter(action='conf'), state='*')
-async def new_entry_account_manager(message: types.Message, state: FSMContext):
-
-    # await bot.send_message(chat_id='aytero, text='Test', parse_mode='html')
+async def new_entry_account_manager(message: types.Message,
+                                    state: FSMContext,
+                                    callback_data: typing.Dict[str, str] = None):
 
     async with state.proxy() as data:
 
-        # print(message.from_user.id)
         query = data.get('query')
 
         await delete_msg(query.message.chat.id, query.message.message_id)
@@ -322,22 +372,23 @@ async def new_entry_account_manager(message: types.Message, state: FSMContext):
         await bot.send_message(query.from_user.id, display_summary(data), parse_mode='html')
 
         await bot.send_message(chat_id=admin_id, text=display_summary(data, username=True), parse_mode='html')
-        # await bot.forward_message(chat_id='249747747',
-        #                           from_chat_id=query.message.chat.id, message_id=query.message.message_id)
-        # await query.message.reply(welcome, reply_markup=get_keyboard(0), reply=False, parse_mode='html')
 
-        await bot.send_message(message.from_user.id, welcome, reply_markup=get_keyboard(0))
-        await Editing.next()
-        # await state.finish()
+        await bot.send_message(message.from_user.id, phrases.welcome, reply_markup=get_keyboard(0))
+
+        if callback_data and callback_data.get('id') == '0':
+            await Editing.confirmation.set()
+        # await Editing.next()
+        await state.finish()
 
 
-@dp.callback_query_handler(vote_cb.filter(action='exit'), state="*")  # , state=State.in_account)
+@dp.callback_query_handler(vote_cb.filter(action='exit'), state="*")
 async def inline_kb_creating(query: types.CallbackQuery,
                              state: FSMContext,
                              callback_data: typing.Dict[str, str]):
     await state.finish()
     # await state.
-    await query.message.edit_text(welcome, reply_markup=get_keyboard(0),
+    # await state.reset_state()
+    await query.message.edit_text(phrases.welcome, reply_markup=get_keyboard(0),
                                   parse_mode='html'
                                   )
 
