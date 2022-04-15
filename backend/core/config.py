@@ -10,6 +10,7 @@ load_dotenv(dotenv_path=env_path)
 class Settings:
     BOT_TOKEN: str = os.getenv('BOT_TOKEN')
 
+    admin_id = '249747747'  # aytero
     # PROJECT_NAME: str = "Bot"
     # PROJECT_VERSION: str = "1.0.0"
     # USE_SQLITE_DB: str = os.getenv("USE_SQLITE_DB")

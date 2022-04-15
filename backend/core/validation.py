@@ -1,6 +1,10 @@
 import re
 
 
+def is_admin(name: str) -> bool:
+    return name in ['TONYPONY', 'aytero']
+
+
 def validate_charset(name):
     pattern = re.compile("^[А-Яа-я]+(( [А-Яа-я]+)|(-[А-Яа-я]+))*$")
     if pattern.match(name):

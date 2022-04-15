@@ -13,12 +13,15 @@ from aiogram.utils.exceptions import MessageNotModified
 
 from states import Info, Editing
 from core.config import settings
-from core.phrases import phrases
+from core.phrases import phrases, display_summary
 
 from core.validation import validate_charset, validate_name, name_in_names
 
 # from keyboards import get_country_keyboard
-from db.data import db_dict
+from db.data import db_dict, filter_data
+
+from binanceP2P import get_price
+
 
 logging.basicConfig(level=logging.WARN)  # INFO
 
@@ -38,15 +41,11 @@ dp.middleware.setup(LoggingMiddleware())
 vote_cb = CallbackData('vote', 'action', 'id')  # post:<action>:<amount>
 
 
-def is_admin(name: str) -> bool:
-    return name in ['TONYPONY', 'aytero']
-
-
-def get_keyboard(amount, edit=False):
+def get_keyboard(amount):
     t = types.InlineKeyboardMarkup()
-    t.add(types.InlineKeyboardButton('💶 Обменять наличные',    callback_data=vote_cb.new(action='new', id=amount)))
-    t.add(types.InlineKeyboardButton('Операции с картами', callback_data=vote_cb.new(action='card', id=amount)))
-    t.add(types.InlineKeyboardButton('📊 Курс обмена', callback_data=vote_cb.new(action='rates', id=amount)))
+    t.add(types.InlineKeyboardButton(phrases.exchange_cash, callback_data=vote_cb.new(action='new', id=amount)))
+    t.add(types.InlineKeyboardButton(phrases.card, callback_data=vote_cb.new(action='card', id=amount)))
+    t.add(types.InlineKeyboardButton(phrases.exchange_rates, callback_data=vote_cb.new(action='rates', id=amount)))
     return t
 
 
@@ -58,8 +57,11 @@ async def delete_msg(chat_id, msg_id):
 
 
 async def set_commands(dispatcher):
-    commands = [types.BotCommand(command="/start", description="refresh bot")]
-    commands = [types.BotCommand(command="/help", description="справка")]
+    commands = [
+        types.BotCommand(command="/start", description="refresh bot"),
+        types.BotCommand(command="/help", description="справка"),
+        # types.BotCommand(command="/rate", description="курс обмена"),
+    ]
     await bot.set_my_commands(commands)
 
 
@@ -68,18 +70,27 @@ async def message_not_modified_handler(update, error):
     return True
 
 
-@dp.message_handler(commands='start')
-async def cmd_start(message: types.Message):
+@dp.message_handler(commands='start', state='*')
+async def cmd_start(message: types.Message,
+                    state: FSMContext):
+    await state.finish()
     await message.reply(phrases.welcome, reply_markup=get_keyboard(0), reply=False,
                         parse_mode='html'
                         )
 
 
 @dp.message_handler(commands='help')
-async def cmd_start(message: types.Message):
+async def cmd_help(message: types.Message):
     await message.reply(phrases.help, reply_markup=get_keyboard(0), reply=False,
                         parse_mode='html'
                         )
+
+
+def add_emoji(name, table_type):
+    if 'country' in table_type:
+        return phrases.emoji.get(name, '') + " " + name
+    return name
+
 
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
@@ -87,48 +98,20 @@ def chunks(lst, n):
         yield lst[i:i + n]
 
 
-def add_emoji(name, table_type):
-    if 'country' in table_type:
-        return phrases.emoji.get(name) + " " + name
-    return name
+# TODO other crypto and price counting
+# TODO reset state data when 'back' at amount/price
+# TODO /start cmd should also reset state
+# TODO something's wrong with states tho it works
 
 
-def create_buttons_lst(table_type, data=None) -> list:
-
-    # TODO remove this extra code
-    action = {
-        'city': 'city',
-        'country': 'country',
-        'currency_to_sell': 'currency_to_sell',
-        'amount': 'amount',
-        'currency_to_buy': 'currency_to_buy',
-        'time': 'time',
-        'date': 'date',
-        'confirm': 'confirm',
-    }[table_type]
+def create_buttons_lst(action, data=None) -> list:
 
     btns_lst = []
-
-    locs = db_dict[table_type]
-
-    if 'city' in action:
-        country = data.get('country')
-        locs = locs.get(country)
-
-    if 'currency' in action:
-        crypto = db_dict['currency']['crypto']
-        fiat = db_dict['currency']['fiat']
-        locs = crypto + fiat
-
-    # TODO fix: removes currency every iteration if 'back' pressed
-    if 'currency_to_buy' in action:
-        cur = data.get('currency_to_sell')
-        if 'Other' not in cur:
-            locs.remove(cur)
+    locs = filter_data(data=data, action=action)
 
     for loc in locs:
         btn = types.InlineKeyboardButton(
-            add_emoji(loc, table_type), callback_data=vote_cb.new(loc, action=action)
+            add_emoji(loc, action), callback_data=vote_cb.new(loc, action=action)
         )
         btns_lst.append(btn)
     return btns_lst
@@ -142,27 +125,13 @@ def create_menu(data=None, table_type=None, confirmation=False, btns_in_row=3, p
 
     if confirmation:
         btns.row(types.InlineKeyboardButton(
-            "✅ Да", callback_data=vote_cb.new("no", action='conf')))
+            phrases.yes, callback_data=vote_cb.new("no", action='conf')))
 
     btns.row(types.InlineKeyboardButton(
-            "⬅ Назад", callback_data=vote_cb.new(action=prev_action, id='0')
-            # "Назад", callback_data=vote_cb.new("no", action='back')
-    ))
-    btns.row(types.InlineKeyboardButton(
-        "🚫 Отмена", callback_data=vote_cb.new("no", action='exit')
-    ))
+        phrases.back, callback_data=vote_cb.new(action=prev_action, id='0')))
+    # btns.row(types.InlineKeyboardButton(
+    #     phrases.cancel, callback_data=vote_cb.new("no", action='exit')))
     return btns
-
-
-# @dp.callback_query_handler(vote_cb.filter(action='back'))  # , state=State.in_account)
-# async def inline_kb_creating(query: types.CallbackQuery,
-#                              state: FSMContext,
-#                              callback_data: typing.Dict[str, str]):
-#     # await state.finish()
-#     # state.reset_state()
-#     await query.message.edit_text(text='backk', reply_markup=None,
-#                                   parse_mode='html'
-#                                   )
 
 
 @dp.callback_query_handler(vote_cb.filter(action='card'))
@@ -196,27 +165,6 @@ async def inline_kb_creating(
                                       reply_markup=create_menu(table_type='country', btns_in_row=2))
 
 
-# TODO switch places: cur to buy -> cur to sell -> amount
-# TODO exchange rate for chosen opts
-# TODO /start cmd should also reset state
-# TODO something's wrong with states tho it works
-def display_summary(data, ask=False, username=False, phrase=''):
-
-    msg = f'Детали сделки: \n'
-    msg += f"Страна: <b>{data.get('country', '')}</b>\n"
-    msg += f"Город: <b>{data.get('city', '')}</b>\n"
-    msg += f"⏩ Продать: <b>{data.get('amount', '')} {data.get('currency_to_sell', '')}</b>\n"
-    # calculate according to binance rates
-    msg += f"⏪ Получить: <b>{data.get('currency_to_buy', '')}</b>\n"
-    msg += f"Дата и время: <b>{data.get('date', '')} {data.get('time', '')}</b>\n"
-    if username:
-        msg += f"Заказчик: @{data['query']['from']['username']}"
-    msg += '\n'
-    if ask:
-        msg += f'<b>Подтвердить?</b> \n'
-    return msg + phrase
-
-
 @dp.message_handler(state=Editing.country)
 @dp.callback_query_handler(vote_cb.filter(action='country'), state='*')
 async def new_entry_account_manager(message: types.Message,
@@ -248,10 +196,16 @@ async def new_entry_account_manager(message: types.Message,
 
         await query.message.edit_text(
             display_summary(phrase=phrases.pick_currency_to_sell, data=data),
-            reply_markup=create_menu(table_type='currency_to_sell', prev_action='country'))
+            reply_markup=create_menu(data=data, table_type='currency_to_sell', prev_action='country'))
         if callback_data and callback_data.get('id') == '0':
             await Editing.city.set()
         await Editing.next()
+
+
+def get_operation_type(currency):
+    if currency in db_dict.get('all_crypto'):
+        return 'SELL'
+    return 'BUY'
 
 
 @dp.message_handler(state=Editing.currency_to_sell)
@@ -263,14 +217,50 @@ async def new_entry_account_manager(message: types.Message,
         query = data.get('query')
         if callback_data and callback_data.get('id') != '0':
             data['currency_to_sell'] = callback_data['id']
+        # else:
+        #     await state.reset_state()
+
+        data['operation_type'] = get_operation_type(data.get('currency_to_sell'))
+        # if data.get('currency_to_sell') in db_dict['currency']['crypto']:
+        #     data['operation_type'] = 'SELL'
+        # else:
+        #     data['operation_type'] = 'BUY'
 
         await query.message.edit_text(
-            display_summary(phrase=phrases.pick_amount, data=data), reply_markup=create_menu(prev_action='city'))
+            display_summary(phrase=phrases.pick_currency_to_buy, data=data),
+            reply_markup=create_menu(data=data, table_type='currency_to_buy', prev_action='city'))
+        # display_summary(phrase=phrases.pick_amount, data=data), reply_markup = create_menu(prev_action='city'))
         if callback_data and callback_data.get('id') == '0':
+            data['price'] = None
             await Editing.currency_to_sell.set()
         await Editing.next()
         # if callback_data and callback_data.get('id') == '0':
         #     await Editing.currency_to_sell.set()
+
+
+@dp.message_handler(state=Editing.currency_to_buy)
+@dp.callback_query_handler(vote_cb.filter(action='currency_to_buy'), state='*')
+async def new_entry_account_manager(message: types.Message,
+                                    state: FSMContext,
+                                    callback_data: typing.Dict[str, str] = None):
+    async with state.proxy() as data:
+        query = data.get('query')
+        if callback_data and callback_data.get('id') != '0':
+            data['currency_to_buy'] = callback_data['id']
+
+            operation_type = data.get('operation_type')
+            if operation_type == 'SELL':
+                data['price'] = get_price(data.get('currency_to_sell'), data.get('currency_to_buy'), 'SELL')
+            elif operation_type == 'BUY':
+                data['price'] = get_price(data.get('currency_to_buy'), data.get('currency_to_sell'), 'BUY')
+
+        await query.message.edit_text(
+            display_summary(phrase=phrases.pick_amount, data=data),
+            reply_markup=create_menu(prev_action='currency_to_sell'))
+
+        if callback_data and callback_data.get('id') == '0':
+            await Editing.currency_to_buy.set()
+        await Editing.next()
 
 
 @dp.message_handler(state=Editing.amount)
@@ -285,37 +275,23 @@ async def new_entry_account_manager(message: types.Message,
 
         if cur_state == 'Editing:amount':
             input_amount = message.text
-            if not input_amount.replace(".", "", 1).isdigit():
+            try:
+                float(input_amount)
+            except:
+            # if not input_amount.replace(".", "", 1).isdigit():
                 await delete_msg(message.chat.id, message.message_id)
                 await query.message.edit_text(
                     display_summary(phrase=phrases.err_amount, data=data), reply_markup=create_menu(prev_action='city'))
                 return
-            data['amount'] = message.text  # int()
+            data['amount'] = float(message.text)  # int()
             await delete_msg(message.chat.id, message.message_id)
 
         await query.message.edit_text(
-            display_summary(phrase=phrases.pick_currency_to_buy, data=data),
-            reply_markup=create_menu(data=data, table_type='currency_to_buy', prev_action='currency_to_sell'))
-        if callback_data and callback_data.get('id') == '0':
-            await Editing.amount.set()
-        await Editing.next()
-
-
-@dp.message_handler(state=Editing.currency_to_buy)
-@dp.callback_query_handler(vote_cb.filter(action='currency_to_buy'), state='*')
-async def new_entry_account_manager(message: types.Message,
-                                    state: FSMContext,
-                                    callback_data: typing.Dict[str, str] = None):
-    async with state.proxy() as data:
-        query = data.get('query')
-        if callback_data and callback_data.get('id') != '0':
-            data['currency_to_buy'] = callback_data['id']
-
-        await query.message.edit_text(
             display_summary(phrase=phrases.pick_date, data=data),
-            reply_markup=create_menu(table_type='date', prev_action='amount'))
+            reply_markup=create_menu(data=data, table_type='date', prev_action='currency_to_buy'))
         if callback_data and callback_data.get('id') == '0':
-            await Editing.currency_to_buy.set()
+            # data['price'] = None
+            await Editing.amount.set()
         await Editing.next()
 
 
@@ -353,8 +329,6 @@ async def new_entry_account_manager(message: types.Message,
             await Editing.time.set()
         await Editing.next()
 
-admin_id = '249747747'  # aytero
-
 
 @dp.message_handler(state=Editing.confirmation)
 @dp.callback_query_handler(vote_cb.filter(action='conf'), state='*')
@@ -371,7 +345,7 @@ async def new_entry_account_manager(message: types.Message,
         await bot.send_message(query.from_user.id, phrases.success, parse_mode='html')
         await bot.send_message(query.from_user.id, display_summary(data), parse_mode='html')
 
-        await bot.send_message(chat_id=admin_id, text=display_summary(data, username=True), parse_mode='html')
+        await bot.send_message(chat_id=settings.admin_id, text=display_summary(data, username=True), parse_mode='html')
 
         await bot.send_message(message.from_user.id, phrases.welcome, reply_markup=get_keyboard(0))
 
@@ -386,8 +360,6 @@ async def inline_kb_creating(query: types.CallbackQuery,
                              state: FSMContext,
                              callback_data: typing.Dict[str, str]):
     await state.finish()
-    # await state.
-    # await state.reset_state()
     await query.message.edit_text(phrases.welcome, reply_markup=get_keyboard(0),
                                   parse_mode='html'
                                   )
