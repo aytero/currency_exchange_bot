@@ -1,48 +1,80 @@
-# from ..binanceP2P import get_price
-from db.data import db_dict
-from binanceP2P import get_price
+from db.data import db_dict, filter_data
 
 
-def calculate_fee(price=0, country='Турция'):
-    fee = db_dict['country'][country]['fee']
-    return float(price) - float(price) * float(fee)
+def calculate_income(amount: float = 0.0, price: float = 0.0, fee: float = 0.0, operation_type='SELL'):
+    a = 0
+    total_get = calculate_total_get(amount, price, fee, operation_type)
+    if operation_type == 'SELL':
+        income = amount * price - total_get
+    else:
+        income = amount / price - total_get
+    return income
 
 
-def display_summary(data, ask=False, username=False, phrase=''):
+def calculate_total_get(amount: float = 0.0, price: float = 0.0, fee: float = 0.0, operation_type='SELL'):
+    # try:
+    if operation_type == 'SELL':
+        price -= price * fee
+        total_get = amount * price
+    elif operation_type == 'BUY':
+        price += price * fee
+        total_get = amount / price
+    else:
+        total_get = 0.0
+    # except:
+    # print('calculation error')
+    return total_get
 
+
+def display_summary(data, ask=False, username=None, phrase=''):
     msg = f'Детали сделки: \n'
-    msg += f"Страна: <b>{data.get('country', '')}</b>\n"
+
+    country = data.get('country', '')
+    currency_to_sell = data.get('currency_to_sell', '')
+    amount = data.get('amount', '')
+
+    msg += f"Страна: <b>{country}</b>\n"
     msg += f"Город: <b>{data.get('city', '')}</b>\n"
-    msg += f"⏩ Продать: <b>{data.get('amount', '')} {data.get('currency_to_sell', '')}</b>\n"
+    msg += f"⏩ Продать: <b>{amount} {currency_to_sell}</b>\n"
 
     price = data.get('price')
+    operation_type = data.get('operation_type', '')
+    currency_to_buy = data.get('currency_to_buy', '')
     if price:
-        price = calculate_fee(price, data.get('country'))
-    if price and data.get('amount'):
-        if data.get('operation_type') == 'SELL':
-            calc_amount = round(float(data.get('amount')) * float(price), 4)
-        else:
-            calc_amount = round(float(data.get('amount')) / float(price), 8)
-            # f'{a:.20f}'
-        msg += f"⏪ Получить: <b>{calc_amount:.9f} {data.get('currency_to_buy', '')}</b>\n"
-    if price and data.get('operation_type') == 'SELL':
-        msg += f"💱 Курс: <b>1 {data.get('currency_to_sell')} = {price} {data.get('currency_to_buy')}</b>\n"
-        # msg += f"Комиссия: <b>1 {price} {data.get('currency_to_buy')}</b>\n"
-    elif price and data.get('operation_type') == 'BUY':
-        msg += f"💱 Курс: <b>1 {data.get('currency_to_buy')} = {price} {data.get('currency_to_sell')}</b>\n"
+        fee = filter_data(action='fee', country=country)
+        if amount:
+            total_get = calculate_total_get(float(amount), float(price), float(fee), operation_type)
+            msg += f"⏪ Получить: <b>{total_get:.6f} {currency_to_buy}</b>\n"
+
+        if operation_type == 'SELL':
+            price = float(price) - float(price) * float(fee)
+            msg += f"💱 Курс: <b>1 {currency_to_sell} = {price:.6f} {currency_to_buy}</b>\n"
+        elif operation_type == 'BUY':
+            price = float(price) + float(price) * fee
+            msg += f"💱 Курс: <b>1 {currency_to_buy} = {float(price):.6f} {currency_to_sell}</b>\n"
     else:
-        msg += f"⏪ Получить: <b>{data.get('currency_to_buy', '')}</b>\n"
+        msg += f"⏪ Получить: <b>{currency_to_buy}</b>\n"
 
     msg += f"Дата и время: <b>{data.get('date', '')} {data.get('time', '')}</b>\n"
     if username:
-        msg += f"Заказчик: @{data['query']['from']['username']}\n"
-        # msg += f"Комиссия: <b>7%</b>\n"
-        # msg += f"Доход: <b>calc_amount - amount</b>\n"
+        msg += f"Заказчик: @{username}\n"
+        # exception danger float()
+        fee = filter_data(action='fee', country=country)
+        income = calculate_income(float(amount), float(price), float(fee), operation_type)
+        msg += f"Комиссия: <b>{float(fee * 100):.2f}%</b>\n"
+        msg += f"Доход: <b>{float(income):.3f} {currency_to_buy}</b>\n"
 
     msg += '\n'
     if ask:
         msg += f'<b>Подтвердить?</b> \n'
+
     return msg + phrase
+
+
+def add_emoji(name, action):
+    if 'country' in action:
+        return phrases.emoji.get(name, '') + " " + name
+    return name
 
 
 class Phrases:
@@ -99,7 +131,7 @@ class Phrases:
     exchange_cash = '💶 Операции с наличными'
     card = 'Операции с картами'
     exchange_rates = '💱 Курс обмена'
-    success = 'Сделка успешно зафиксирована!\nДальше с вами свяжется человек.'
+    success = 'Сделка успешно зафиксирована!\nС вами свяжется оператор.'
 
     # "✔️✅ Да", callback_data = vote_cb.new("no", action='conf')))
 

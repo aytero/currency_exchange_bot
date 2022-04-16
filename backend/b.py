@@ -13,7 +13,7 @@ from aiogram.utils.exceptions import MessageNotModified
 
 from states import Info, Editing
 from core.config import settings
-from core.phrases import phrases, display_summary
+from core.phrases import phrases, add_emoji, display_summary
 
 from core.validation import validate_charset, validate_name, name_in_names
 
@@ -79,17 +79,14 @@ async def cmd_start(message: types.Message,
                         )
 
 
-@dp.message_handler(commands='help')
-async def cmd_help(message: types.Message):
+@dp.message_handler(commands='help', state='*')
+async def cmd_help(message: types.Message,
+                   state: FSMContext):
+    # TODO message send
+    await state.finish()
     await message.reply(phrases.help, reply_markup=get_keyboard(0), reply=False,
                         parse_mode='html'
                         )
-
-
-def add_emoji(name, table_type):
-    if 'country' in table_type:
-        return phrases.emoji.get(name, '') + " " + name
-    return name
 
 
 def chunks(lst, n):
@@ -100,14 +97,13 @@ def chunks(lst, n):
 
 # TODO other crypto and price counting
 # TODO reset state data when 'back' at amount/price
-# TODO /start cmd should also reset state
-# TODO something's wrong with states tho it works
 
 
 def create_buttons_lst(action, data=None) -> list:
 
     btns_lst = []
-    locs = filter_data(data=data, action=action)
+
+    locs = filter_data(action=action, country=data.get('country'), operation_type=data.get('operation_type'))
 
     for loc in locs:
         btn = types.InlineKeyboardButton(
@@ -162,7 +158,7 @@ async def inline_kb_creating(
         await Editing.country.set()
         await state.update_data(query=query)
         await query.message.edit_text(phrases.pick_country,
-                                      reply_markup=create_menu(table_type='country', btns_in_row=2))
+                                      reply_markup=create_menu(table_type='country', data=data, btns_in_row=2))
 
 
 @dp.message_handler(state=Editing.country)
@@ -178,9 +174,6 @@ async def new_entry_account_manager(message: types.Message,
         await query.message.edit_text(
             display_summary(data=data, phrase=phrases.pick_city),
             reply_markup=create_menu(data=data, table_type='city', btns_in_row=2))
-        # if callback_data and callback_data.get('id') == '0':
-        #     await Editing.country.set()
-        # new_state = FSMContext(storage, query.message.chat.id, query.from_user.id)
         await Editing.next()
 
 
@@ -221,15 +214,10 @@ async def new_entry_account_manager(message: types.Message,
         #     await state.reset_state()
 
         data['operation_type'] = get_operation_type(data.get('currency_to_sell'))
-        # if data.get('currency_to_sell') in db_dict['currency']['crypto']:
-        #     data['operation_type'] = 'SELL'
-        # else:
-        #     data['operation_type'] = 'BUY'
 
         await query.message.edit_text(
             display_summary(phrase=phrases.pick_currency_to_buy, data=data),
             reply_markup=create_menu(data=data, table_type='currency_to_buy', prev_action='city'))
-        # display_summary(phrase=phrases.pick_amount, data=data), reply_markup = create_menu(prev_action='city'))
         if callback_data and callback_data.get('id') == '0':
             data['price'] = None
             await Editing.currency_to_sell.set()
@@ -272,25 +260,23 @@ async def new_entry_account_manager(message: types.Message,
         query = data.get('query')
 
         cur_state = await state.get_state()
-
         if cur_state == 'Editing:amount':
             input_amount = message.text
             try:
                 float(input_amount)
             except:
-            # if not input_amount.replace(".", "", 1).isdigit():
                 await delete_msg(message.chat.id, message.message_id)
                 await query.message.edit_text(
-                    display_summary(phrase=phrases.err_amount, data=data), reply_markup=create_menu(prev_action='city'))
+                    display_summary(phrase=phrases.err_amount, data=data),
+                    reply_markup=create_menu(prev_action='city'))
                 return
-            data['amount'] = float(message.text)  # int()
+            data['amount'] = input_amount
             await delete_msg(message.chat.id, message.message_id)
 
         await query.message.edit_text(
             display_summary(phrase=phrases.pick_date, data=data),
             reply_markup=create_menu(data=data, table_type='date', prev_action='currency_to_buy'))
         if callback_data and callback_data.get('id') == '0':
-            # data['price'] = None
             await Editing.amount.set()
         await Editing.next()
 
@@ -307,7 +293,7 @@ async def new_entry_account_manager(message: types.Message,
 
         await query.message.edit_text(
             display_summary(phrase=phrases.pick_time, data=data),
-            reply_markup=create_menu(table_type='time', btns_in_row=1, prev_action='currency_to_buy'))
+            reply_markup=create_menu(table_type='time', data=data, btns_in_row=1, prev_action='currency_to_buy'))
         if callback_data and callback_data.get('id') == '0':
             await Editing.date.set()
         await Editing.next()
@@ -340,12 +326,16 @@ async def new_entry_account_manager(message: types.Message,
 
         query = data.get('query')
 
+        if message.from_user.username == 'GeorgeKazakevich':
+            print(message.from_user.id)
         await delete_msg(query.message.chat.id, query.message.message_id)
 
         await bot.send_message(query.from_user.id, phrases.success, parse_mode='html')
         await bot.send_message(query.from_user.id, display_summary(data), parse_mode='html')
 
-        await bot.send_message(chat_id=settings.admin_id, text=display_summary(data, username=True), parse_mode='html')
+        await bot.send_message(chat_id=settings.admin_id,
+                               text=display_summary(data, username=message.from_user.username),
+                               parse_mode='html')
 
         await bot.send_message(message.from_user.id, phrases.welcome, reply_markup=get_keyboard(0))
 
