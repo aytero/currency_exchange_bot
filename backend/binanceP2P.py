@@ -46,7 +46,7 @@ data = {
     "page": 1,
     "payTypes": [],
     "publisherType": None,
-    "rows": 1,
+    "rows": 2,
     "tradeType": "BUY"
 }
 
@@ -63,7 +63,7 @@ def get_price(asset: str, fiat: str, side: str = "BUY", p_type: str = None) -> f
             json=data)
     try:
         d = json.loads(r.text)
-        return d['data'][0]['adv']['price']
+        return d['data'][1]['adv']['price']
     except:
         return 0
 
