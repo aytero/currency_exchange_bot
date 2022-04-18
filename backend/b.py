@@ -285,7 +285,7 @@ async def new_entry_account_manager(message: types.Message,
         if cur_state == 'Editing:amount':
             input_amount = message.text
             try:
-                float(input_amount)
+                input_amount = float(input_amount)
             except:
                 await delete_msg(message.chat.id, message.message_id)
                 await query.message.edit_text(
@@ -293,6 +293,13 @@ async def new_entry_account_manager(message: types.Message,
                     reply_markup=create_menu(prev_action='currency_to_buy'))
                 return
             data['amount'] = input_amount
+
+            if data.get('country') == 'Турция' and data.get('currency_to_sell') == 'USDT':
+                if input_amount / 0.95238 < 5000:
+                    data['price'] = 100 / 105  # 0.95238
+                else:
+                    data['price'] = 100 / 104  # 0.96154
+
             await delete_msg(message.chat.id, message.message_id)
 
         await query.message.edit_text(
@@ -452,6 +459,10 @@ async def new_entry_account_manager(message: types.Message,
                     reply_markup=create_menu(prev_action='card_currency_buy'))
                 return
             data['amount'] = input_amount
+            price = calculate_price_card(data.get('operation_type'), data.get('currency_to_sell'),
+                                         data.get('currency_to_buy'), input_amount)
+            if data.get('price') != price:
+                data['price'] = price
             await delete_msg(message.chat.id, message.message_id)
 
         await query.message.edit_text(

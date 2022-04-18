@@ -1,5 +1,5 @@
 from db.data import db_dict, filter_data
-from calculations import calculate_get
+from calculations import calculate_get, calculate_price_card
 
 
 def display_summary(data, username=None, phrase=''):
@@ -17,11 +17,11 @@ def display_summary(data, username=None, phrase=''):
     if price:
         amount = data.get('amount')
         if amount:
-            if data.get('country') == 'Турция' and currency_to_sell == 'USDT':
-                if float(amount) / 0.95238 < 5000:
-                    price = 100 / 105  # 0.95238
-                else:
-                    price = 100 / 104  # 0.96154
+            # if data.get('country') == 'Турция' and currency_to_sell == 'USDT':
+            #     if float(amount) / 0.95238 < 5000:
+            #         price = 100 / 105  # 0.95238
+            #     else:
+            #         price = 100 / 104  # 0.96154
             total_get = calculate_get(float(amount), float(price), operation_type)
             if currency_to_buy in ['BTC', 'ETH'] or currency_to_sell in ['BTC', 'ETH']:
                 msg += f"⏪ Получить: <b>{total_get:.8f} {currency_to_buy}</b>\n"
@@ -52,6 +52,9 @@ def card_summary(data, username=None, phrase=''):
     if price:
         amount = data.get('amount')
         if amount:
+            # price = calculate_price_card(operation_type, data.get('currency_to_sell'),
+            #                                      data.get('currency_to_buy'), amount)
+            # data['price'] = price
             total_get = calculate_get(float(amount), float(price), operation_type)
             msg += f"⏪ Получить: <b>{total_get:.4f} {currency_to_buy}</b>\n"
         if operation_type == 'SELL':
