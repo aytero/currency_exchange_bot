@@ -29,16 +29,22 @@ from binanceP2P import get_price
 card_currency = ['USDT', 'RUB']
 
 
-def calculate_price_card(operation_type: str = 'BUY', cur_sell=None, cur_buy=None) -> float:
+def calculate_price_card(operation_type: str = 'BUY', cur_sell=None, cur_buy=None, amount=None) -> float:
     price = 0.0
     # if country == 'Россия' or country == 'Турция':
     # if amount > 5000
     if operation_type == 'BUY':
         price = float(get_price(cur_buy, cur_sell, 'BUY', 'Tinkoff'))
-        price += price * 0.02
+        price += price * 0.05
+        if amount and (float(amount) / price >= 5000):
+            price = float(get_price(cur_buy, cur_sell, 'BUY', 'Tinkoff'))
+            price += price * 0.04
     elif operation_type == 'SELL':
         price = float(get_price(cur_sell, cur_buy, 'SELL', 'Tinkoff'))
-        price -= price * 0.02
+        price -= price * 0.06
+        if amount and float(amount) >= 5000:
+            price = float(get_price(cur_sell, cur_buy, 'SELL', 'Tinkoff'))
+            price -= price * 0.05
     return price
 
 # Turkey Карты
@@ -63,8 +69,8 @@ def calculate_price(country: str = 'Турция', operation_type: str = 'BUY',
             else:
                 # elif cur_sell == 'RUB':
                 # print(operation_type)
-                # TODO
-                price = float(get_price(cur_buy, cur_sell, 'BUY', 'Tinkoff'))
+                # TODO tinkoff?
+                price = float(get_price(cur_buy, cur_sell, 'BUY'))
                 # print(price)
                 # price = get_price(cur_buy, cur_sell, 'BUY', p_type=['Cash in Person'])
                 price += price * 0.03
