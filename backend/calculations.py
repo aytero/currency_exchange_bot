@@ -58,10 +58,11 @@ def calculate_price(country: str = 'Турция', operation_type: str = 'BUY',
     price = 0.0
     if country == 'Россия':
         if operation_type == 'BUY':
-            if cur_sell == 'USD':
+            if cur_sell == 'USD' and cur_buy == 'USDT':
                 price = 1.03
-            elif cur_sell == 'RUB':
-                print(operation_type)
+            else:
+                # elif cur_sell == 'RUB':
+                # print(operation_type)
                 price = float(get_price(cur_buy, cur_sell, 'BUY'))
                 # price = get_price(cur_buy, cur_sell, 'BUY', p_type=['Cash in Person'])
                 price += price * 0.03
@@ -73,9 +74,10 @@ def calculate_price(country: str = 'Турция', operation_type: str = 'BUY',
 
     if country == 'Турция':
         if operation_type == 'BUY':
-            if cur_sell == 'USD':
+            if cur_sell == 'USD' and cur_buy == 'USDT':
                 price = 1.02
-            elif cur_sell == 'TRY':
+            # elif cur_sell == 'TRY':
+            else:
                 # no cash options in Turkey! p_type = None
                 price = float(get_price(cur_buy, cur_sell, 'BUY'))
                 price += price * 0.02

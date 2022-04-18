@@ -2,7 +2,7 @@ import requests
 import json
 from datetime import datetime, timedelta
 
-cache_expired_time = 60 * 20
+cache_expired_time = 20
 cache = {}
 
 
