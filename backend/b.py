@@ -45,7 +45,7 @@ def get_keyboard(amount):
     t = types.InlineKeyboardMarkup()
     t.add(types.InlineKeyboardButton(phrases.exchange_cash, callback_data=vote_cb.new(action='new', id=amount)))
     t.add(types.InlineKeyboardButton(phrases.card, callback_data=vote_cb.new(action='card', id=amount)))
-    t.add(types.InlineKeyboardButton(phrases.exchange_rates, callback_data=vote_cb.new(action='rates', id=amount)))
+    # t.add(types.InlineKeyboardButton(phrases.exchange_rates, callback_data=vote_cb.new(action='rates', id=amount)))
     return t
 
 

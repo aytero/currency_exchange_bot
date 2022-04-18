@@ -113,6 +113,8 @@ def card_summary(data, username=None, phrase=''):
 def add_emoji(name, action):
     if 'country' in action:
         return phrases.emoji.get(name, '') + " " + name
+    if 'currency' in action:
+        return phrases.emoji.get(name, '') + " " + name
     return name
 
 
@@ -170,6 +172,12 @@ class Phrases:
              'Черногория': '🇲🇪',
              'Казахстан': '🇰🇿',
              'Кыргызстан': '🇰🇬',
+             'BTC': '💠',
+             'USDT': '💠',
+             'ETH': '💠',
+             'USD': '💲',
+             'RUB': '💲',
+             'TRY': '💲',
              }
     under_construction = '🚧 under construction 🚧'
     back = '⬅ назад'
