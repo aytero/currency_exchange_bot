@@ -22,6 +22,7 @@ db_dict = {
     'all_fiat': all_fiat,
     'all_crypto': all_crypto,
     'card_currency': ['USDT', 'RUB'],
+    'bank': ['Тинькофф', 'Сбербанк', 'Россельхозбанк'],
     'country': {
         'Россия': {
             'city': ['Москва', 'Санкт-Петербург', 'Казань',
@@ -127,6 +128,9 @@ def filter_data(action='country', country='Турция', operation_type='BUY'):
         return locs
     if 'card_currency_sell' in action:
         locs = db_dict['card_currency']
+        return locs
+    if 'bank' in action:
+        locs = db_dict['bank']
         return locs
 
     if 'country' in action:

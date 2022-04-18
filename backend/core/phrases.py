@@ -42,6 +42,7 @@ def display_summary(data, username=None, phrase=''):
 
 def card_summary(data, username=None, phrase=''):
     msg = f'Детали сделки: \n'
+    msg += f"Банк: <b>{data.get('bank', '')}</b>\n"
 
     currency_to_sell = data.get('currency_to_sell', '')
     currency_to_buy = data.get('currency_to_buy', '')
@@ -151,6 +152,7 @@ class Phrases:
     )
 
     ask = '<b>Подтвердить?</b>\n'
+    pick_bank = '🏦 <b>Выберите банк</b>:'
     pick_country = '🌏 <b>Выберите страну</b>:'
     other_country = f'Выбранная страна пока не автоматизирована. Дальше с вами свяжется оператор.\n<b>Подтвердить?</b>\n'
     pick_city = f'🏙 <b>Выберите город</b>:'

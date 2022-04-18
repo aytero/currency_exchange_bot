@@ -63,9 +63,12 @@ def calculate_price(country: str = 'Турция', operation_type: str = 'BUY',
             else:
                 # elif cur_sell == 'RUB':
                 # print(operation_type)
-                price = float(get_price(cur_buy, cur_sell, 'BUY'))
+                # TODO
+                price = float(get_price(cur_buy, cur_sell, 'BUY', 'Tinkoff'))
+                # print(price)
                 # price = get_price(cur_buy, cur_sell, 'BUY', p_type=['Cash in Person'])
                 price += price * 0.03
+                # print(price)
         if operation_type == 'SELL':
             if cur_buy == 'RUB':
                 price = float(get_price(cur_sell, cur_buy, 'SELL'))

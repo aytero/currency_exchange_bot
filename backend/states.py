@@ -13,6 +13,7 @@ class Editing(StatesGroup):
 
 
 class Cards(StatesGroup):
+    bank = State()
     currency_to_sell = State()
     currency_to_buy = State()
     amount = State()

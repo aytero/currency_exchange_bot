@@ -149,12 +149,11 @@ async def inline_kb_creating(
         state: FSMContext,
         callback_data: typing.Dict[str, str]):
     async with state.proxy() as data:
-        await Cards.currency_to_sell.set()
+        await Cards.bank.set()
         await state.update_data(query=query)
         # await query.message.edit_text(phrases.under_construction, reply_markup=create_menu())
-        await query.message.edit_text(phrases.pick_currency_to_sell,
-                                      reply_markup=create_menu(table_type='card_currency_sell',
-                                                               data=data, btns_in_row=2))
+        await query.message.edit_text(phrases.pick_bank,
+                                      reply_markup=create_menu(table_type='card_bank', data=data, btns_in_row=1))
 
 
 @dp.callback_query_handler(vote_cb.filter(action='new'), state='*')
@@ -367,6 +366,23 @@ async def new_entry_account_manager(message: types.Message,
             await Editing.confirmation.set()
         # await Editing.next()
         await state.finish()
+
+
+@dp.callback_query_handler(vote_cb.filter(action='card_bank'), state='*')
+async def new_entry_account_manager(message: types.Message,
+                                    state: FSMContext,
+                                    callback_data: typing.Dict[str, str] = None):
+    async with state.proxy() as data:
+        query = data.get('query')
+        if callback_data and callback_data.get('id') != '0':
+            data['bank'] = callback_data['id']
+
+        await query.message.edit_text(
+            card_summary(phrase=phrases.pick_currency_to_sell, data=data),
+            reply_markup=create_menu(data=data, table_type='card_currency_sell', prev_action='card'))
+        if callback_data and callback_data.get('id') == '0':
+            await Cards.bank.set()
+        await Cards.next()
 
 
 # @dp.message_handler(state=Cards.currency_to_sell)
