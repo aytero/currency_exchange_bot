@@ -21,52 +21,113 @@ db_dict = {
     'time': time_slots,
     'all_fiat': all_fiat,
     'all_crypto': all_crypto,
+    'card_currency': ['USDT', 'RUB'],
     'country': {
         'Россия': {
-            'city': ['Москва', 'Санкт-Петербург', 'Владимир'],
+            'city': ['Москва', 'Санкт-Петербург', 'Казань',
+                     'Екатеринбург', 'Краснодар', 'Чебоксары',
+                     'Йошкар-Ола', 'Нижний Новгород'],
             'currency': {
-                'fiat': ['RUB', 'USD', 'EUR'],
-                'crypto': ['USDT', 'BTC', 'ETH', 'Other crypto'],
+                'fiat': ['RUB', 'USD'],
+                'crypto': ['USDT', 'BTC', 'ETH'],
             },
             'fee': 0,
         },
         'Турция': {
-            'city': ['Каш', 'Стамбул', 'Анаталия', 'Калкан'],
+            'city': ['Анаталия', 'Каш', 'Калкан', 'Фетхие', 'Кемер'],
             'currency': {
-                'fiat': ['TRY', 'USD', 'EUR'],
-                'crypto': ['USDT', 'BTC', 'ETH', 'Other crypto'],
+                'fiat': ['TRY', 'USD'],
+                'crypto': ['USDT', 'BTC', 'ETH'],
             },
             'fee': 0.07,
         },
-        'Грузия': {
-            'city': ['Тбилиси', 'Батуми'],
-            'currency': {
-                'fiat': ['GEL', 'USD', 'EUR'],
-                'crypto': ['USDT', 'BTC', 'ETH', 'Other crypto'],
-            },
-            'fee': 0,
-        },
-        'Армения': {
-            'city': ['Ереван', 'Гюмри'],
-            'currency': {
-                'fiat': ['AMD', 'USD', 'EUR'],
-                'crypto': ['USDT', 'BTC', 'ETH', 'Other crypto'],
-            },
-            'fee': 0,
-        },
         'Кипр': {
-            'city': ['Лимасол', 'Ларнака', 'Никосия'],
+            'city': ['Ларнака', 'Лимасcол'],
             'currency': {
                 'fiat': ['USD', 'EUR'],
                 'crypto': ['USDT', 'BTC', 'ETH', 'Other crypto'],
             },
             'fee': 0.11,
         },
+        'ОАЭ': {
+            'city': ['Дубай'],
+            'currency': {
+                'fiat': ['USD', 'EUR'],
+                'crypto': ['USDT', 'BTC', 'ETH', 'Other crypto'],
+            },
+            'fee': 0.0,
+        },
+        'Испания': {
+            'city': ['Барселона'],
+            'currency': {
+                'fiat': ['USD', 'EUR'],
+                'crypto': ['USDT', 'BTC', 'ETH', 'Other crypto'],
+            },
+            'fee': 0.0,
+        },
+        'Индия': {
+            'city': ['Гоа, Панаджи'],
+            'currency': {
+                'fiat': ['USD', 'EUR'],
+                'crypto': ['USDT', 'BTC', 'ETH', 'Other crypto'],
+            },
+            'fee': 0.0,
+        },
+        'Черногория': {
+            'city': ['Подгорица'],
+            'currency': {
+                'fiat': ['USD', 'EUR'],
+                'crypto': ['USDT', 'BTC', 'ETH', 'Other crypto'],
+            },
+            'fee': 0.0,
+        },
+        'Казахстан': {
+            'city': ['Алматы', 'Нур-Султан (Астана)'],
+            'currency': {
+                'fiat': ['USD', 'EUR'],
+                'crypto': ['USDT', 'BTC', 'ETH', 'Other crypto'],
+            },
+            'fee': 0.0,
+        },
+        'Кыргызстан': {
+            'city': ['Бишкек'],
+            'currency': {
+                'fiat': ['USD', 'EUR'],
+                'crypto': ['USDT', 'BTC', 'ETH', 'Other crypto'],
+            },
+            'fee': 0.0,
+        },
+        # 'Грузия': {
+        #     'city': ['Тбилиси', 'Батуми'],
+        #     'currency': {
+        #         'fiat': ['GEL', 'USD', 'EUR'],
+        #         'crypto': ['USDT', 'BTC', 'ETH', 'Other crypto'],
+        #     },
+        #     'fee': 0,
+        # },
+        # 'Армения': {
+        #     'city': ['Ереван', 'Гюмри'],
+        #     'currency': {
+        #         'fiat': ['AMD', 'USD', 'EUR'],
+        #         'crypto': ['USDT', 'BTC', 'ETH', 'Other crypto'],
+        #     },
+        #     'fee': 0,
+        # },
     }
 }
 
 
 def filter_data(action='country', country='Турция', operation_type='BUY'):
+
+    if 'card_currency_buy' in action:
+        if operation_type == 'BUY':
+            locs = ['USDT']
+        else:
+            locs = ['RUB']
+        return locs
+    if 'card_currency_sell' in action:
+        locs = db_dict['card_currency']
+        return locs
 
     if 'country' in action:
         locs = list(db_dict.get('country').keys())
@@ -84,7 +145,12 @@ def filter_data(action='country', country='Турция', operation_type='BUY'):
         if operation_type == 'BUY':
             locs = db_dict['country'][country]['currency']['crypto']
         else:
-            locs = db_dict['country'][country]['currency']['fiat']
+            if country == 'Россия':
+                locs = ['RUB']
+            elif country == 'Турция':
+                locs = ['USD']
+            else:
+                locs = db_dict['country'][country]['currency']['fiat']
     elif 'fee' in action:
         locs = db_dict['country'][country]['fee']
     else:

@@ -12,5 +12,12 @@ class Editing(StatesGroup):
     confirmation = State()
 
 
+class Cards(StatesGroup):
+    currency_to_sell = State()
+    currency_to_buy = State()
+    amount = State()
+    confirmation = State()
+
+
 class Info(StatesGroup):
     info = State()

@@ -52,10 +52,12 @@ data = {
 
 
 @caching_decorator
-def get_price(asset: str, fiat: str, side: str = "BUY") -> float:
+def get_price(asset: str, fiat: str, side: str = "BUY", p_type: str = None) -> float:
     data['asset'] = asset
     data['fiat'] = fiat
     data['tradeType'] = side
+    if p_type:
+        data['payTypes'] = [p_type]
     r = requests.post('https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search',
             headers=headers,
             json=data)
@@ -66,6 +68,8 @@ def get_price(asset: str, fiat: str, side: str = "BUY") -> float:
         return 0
 
 
+# print(get_price('USDT', 'RUB', 'BUY'))
+# print(get_price('USDT', 'RUB', 'BUY', 'Tinkoff'))
 # print(get_price("USDT", "TRY", "BUY"))
 # print(get_price("USDT", "TRY", "SELL"))
 # print(get_price(asset="USDT", fiat="TRY", side="BUY"))
