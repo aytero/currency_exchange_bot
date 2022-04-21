@@ -83,7 +83,7 @@ db_dict = {
             'fee': 0.0,
         },
         'Казахстан': {
-            'city': ['Алматы', 'Нур-Султан (Астана)'],
+            'city': ['Алматы', 'Астана'],
             'currency': {
                 'fiat': ['USD', 'EUR'],
                 'crypto': ['USDT', 'BTC', 'ETH', 'Other crypto'],

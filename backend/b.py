@@ -58,7 +58,7 @@ async def delete_msg(chat_id, msg_id):
 
 async def set_commands(dispatcher):
     commands = [
-        types.BotCommand(command="/start", description="refresh bot"),
+        types.BotCommand(command="/start", description="перезагрузить бота"),
         types.BotCommand(command="/help", description="справка"),
         # types.BotCommand(command="/rate", description="курс обмена"),
     ]
@@ -429,6 +429,11 @@ async def new_entry_account_manager(message: types.Message,
             operation_type = data.get('operation_type')
             data['price'] = calculate_price_card(operation_type, data.get('currency_to_sell'),
                                                  data.get('currency_to_buy'))
+
+        # keyboard_markup = types.ReplyKeyboardMarkup(row_width=3)
+        # btns_text = ('100', '200', '300', '400', '500', '600')
+        # keyboard_markup.row(*(types.KeyboardButton(text) for text in btns_text))
+        # await query.message.reply('Amount?', reply_markup=keyboard_markup)
         await query.message.edit_text(
             card_summary(phrase=phrases.pick_amount, data=data),
             reply_markup=create_menu(prev_action='card_currency_sell'))
@@ -484,9 +489,10 @@ async def new_entry_account_manager(message: types.Message,
         await delete_msg(query.message.chat.id, query.message.message_id)
         await bot.send_message(query.from_user.id, phrases.success, parse_mode='html')
         await bot.send_message(query.from_user.id, card_summary(data), parse_mode='html')
-        await bot.send_message(chat_id=settings.admin_id,
-                               text=card_summary(data, username=message.from_user.username),
-                               parse_mode='html')
+        for a_id in settings.admin_ids:
+            await bot.send_message(chat_id=a_id,
+                                   text=card_summary(data, username=message.from_user.username),
+                                   parse_mode='html')
         await bot.send_message(message.from_user.id, phrases.welcome, reply_markup=get_keyboard(0))
         if callback_data and callback_data.get('id') == '0':
             await Cards.confirmation.set()
