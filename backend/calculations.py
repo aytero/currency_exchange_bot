@@ -88,7 +88,7 @@ def calculate_price(country: str = 'Турция', operation_type: str = 'BUY',
             # elif cur_sell == 'TRY':
             else:
                 # no cash options in Turkey! p_type = None
-                price = float(get_price(cur_buy, cur_sell, 'BUY'))
+                price = float(get_price(cur_buy, cur_sell, 'BUY', 'ziraat'))
                 price += price * 0.02
         if operation_type == 'SELL':
             if cur_sell == 'USDT':
@@ -98,7 +98,7 @@ def calculate_price(country: str = 'Турция', operation_type: str = 'BUY',
                 # else:
                 #     price = 100 / 104  # 0.96154
             elif cur_sell in ['BTC', 'ETH']:
-                price = float(get_price(cur_sell, cur_buy, 'SELL'))
+                price = float(get_price(cur_sell, cur_buy, 'SELL', 'ziraat'))
                 price -= 0.04
     return price
 
