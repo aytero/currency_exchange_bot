@@ -70,14 +70,14 @@ def calculate_price(country: str = 'Турция', operation_type: str = 'BUY',
                 # elif cur_sell == 'RUB':
                 # print(operation_type)
                 # TODO tinkoff?
-                price = float(get_price(cur_buy, cur_sell, 'BUY'))
+                price = float(get_price(cur_buy, cur_sell, 'BUY', 'Tinkoff'))
                 # print(price)
                 # price = get_price(cur_buy, cur_sell, 'BUY', p_type=['Cash in Person'])
                 price += price * 0.03
                 # print(price)
         if operation_type == 'SELL':
             if cur_buy == 'RUB':
-                price = float(get_price(cur_sell, cur_buy, 'SELL'))
+                price = float(get_price(cur_sell, cur_buy, 'SELL', 'Tinkoff'))
                 # price = get_price(cur_sell, cur_buy, 'SELL', p_type=['Cash in Person'])
                 price -= price * 0.02
 

@@ -69,6 +69,7 @@ def get_price(asset: str, fiat: str, side: str = "BUY", p_type: str = None) -> f
 
 
 # print(get_price('USDT', 'RUB', 'BUY'))
+# print(get_price('USDT', 'RUB', 'BUY' 'Bank Transfer'))
 # print(get_price('USDT', 'RUB', 'BUY', 'Tinkoff'))
 # print(get_price("USDT", "TRY", "BUY"))
 # print(get_price("USDT", "TRY", "SELL"))

@@ -23,13 +23,14 @@ from db.data import db_dict, filter_data
 from calculations import calculate_price, calculate_price_card
 
 
-logging.basicConfig(level=logging.WARN)  # INFO
+logging.basicConfig(filename='logs/exchange_bot.log', level=logging.WARN)  # INFO
 
 # logging.basicConfig(
 #     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
 # )
 
 logger = logging.getLogger(__name__)
+
 
 loop = asyncio.get_event_loop()
 bot = Bot(token=settings.BOT_TOKEN, loop=loop, parse_mode=types.ParseMode.HTML)
@@ -95,10 +96,7 @@ def chunks(lst, n):
         yield lst[i:i + n]
 
 
-# TODO other crypto and price counting
 # TODO reset state data when 'back' at amount/price
-
-
 def create_buttons_lst(action, data=None) -> list:
 
     btns_lst = []
