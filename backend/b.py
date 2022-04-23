@@ -233,6 +233,7 @@ async def new_entry_account_manager(message: types.Message,
             reply_markup=create_menu(data=data, table_type='currency_to_buy', prev_action='city'))
         if callback_data and callback_data.get('id') == '0':
             data['price'] = None
+            # data['amount'] = None
             await Editing.currency_to_sell.set()
         await Editing.next()
         # if callback_data and callback_data.get('id') == '0':
@@ -252,6 +253,8 @@ async def new_entry_account_manager(message: types.Message,
             operation_type = data.get('operation_type')
             data['price'] = calculate_price(data.get('country'), operation_type,
                                             data.get('currency_to_sell'), data.get('currency_to_buy'))
+            if data['price'] <= 0:
+                data['price'] = None
             # print(data['price'])
 
             # if operation_type == 'SELL':
@@ -265,6 +268,7 @@ async def new_entry_account_manager(message: types.Message,
 
         if callback_data and callback_data.get('id') == '0':
             data['price'] = None
+            # data['amount'] = None
             await Editing.currency_to_buy.set()
         await Editing.next()
 
@@ -305,6 +309,7 @@ async def new_entry_account_manager(message: types.Message,
             reply_markup=create_menu(data=data, table_type='date', prev_action='currency_to_buy'))
         if callback_data and callback_data.get('id') == '0':
             await Editing.amount.set()
+            # data['amount'] = None
         await Editing.next()
 
 
@@ -427,6 +432,8 @@ async def new_entry_account_manager(message: types.Message,
             operation_type = data.get('operation_type')
             data['price'] = calculate_price_card(operation_type, data.get('currency_to_sell'),
                                                  data.get('currency_to_buy'))
+            if data['price'] <= 0:
+                data['price'] = None
 
         # keyboard_markup = types.ReplyKeyboardMarkup(row_width=3)
         # btns_text = ('100', '200', '300', '400', '500', '600')
@@ -466,6 +473,9 @@ async def new_entry_account_manager(message: types.Message,
                                          data.get('currency_to_buy'), input_amount)
             if data.get('price') != price:
                 data['price'] = price
+
+            if data['price'] <= 0:
+                data['price'] = None
             await delete_msg(message.chat.id, message.message_id)
 
         await query.message.edit_text(

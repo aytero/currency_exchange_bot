@@ -2,3 +2,33 @@ WARNING:aiogram:Goodbye!
 WARNING:aiogram:Goodbye!
 WARNING:aiogram:Goodbye!
 WARNING:aiogram:Goodbye!
+WARNING:aiogram:Goodbye!
+WARNING:aiogram:Goodbye!
+WARNING:aiogram:Goodbye!
+WARNING:aiogram:Goodbye!
+WARNING:aiogram:Goodbye!
+WARNING:aiogram:Goodbye!
+WARNING:aiogram:Goodbye!
+WARNING:aiogram:Goodbye!
+WARNING:aiogram:Goodbye!
+WARNING:aiogram:Goodbye!
+ERROR:asyncio:Task exception was never retrieved
+future: <Task finished name='Task-25' coro=<Dispatcher._process_polling_updates() done, defined at /Users/ayto/PycharmProjects/cash_bot/venv/lib/python3.8/site-packages/aiogram/dispatcher/dispatcher.py:407> exception=AttributeError("'Settings' object has no attribute 'admin_id'")>
+Traceback (most recent call last):
+  File "/Users/ayto/PycharmProjects/cash_bot/venv/lib/python3.8/site-packages/aiogram/dispatcher/dispatcher.py", line 415, in _process_polling_updates
+    for responses in itertools.chain.from_iterable(await self.process_updates(updates, fast)):
+  File "/Users/ayto/PycharmProjects/cash_bot/venv/lib/python3.8/site-packages/aiogram/dispatcher/dispatcher.py", line 235, in process_updates
+    return await asyncio.gather(*tasks)
+  File "/Users/ayto/PycharmProjects/cash_bot/venv/lib/python3.8/site-packages/aiogram/dispatcher/handler.py", line 116, in notify
+    response = await handler_obj.handler(*args, **partial_data)
+  File "/Users/ayto/PycharmProjects/cash_bot/venv/lib/python3.8/site-packages/aiogram/dispatcher/dispatcher.py", line 283, in process_update
+    return await self.callback_query_handlers.notify(update.callback_query)
+  File "/Users/ayto/PycharmProjects/cash_bot/venv/lib/python3.8/site-packages/aiogram/dispatcher/handler.py", line 116, in notify
+    response = await handler_obj.handler(*args, **partial_data)
+  File "/Users/ayto/PycharmProjects/cash_bot/backend/b.py", line 367, in new_entry_account_manager
+    await bot.send_message(chat_id=settings.admin_id,
+AttributeError: 'Settings' object has no attribute 'admin_id'
+WARNING:aiogram:Goodbye!
+WARNING:aiogram:Goodbye!
+WARNING:aiogram:Goodbye!
+WARNING:aiogram:Goodbye!
