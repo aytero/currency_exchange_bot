@@ -14,8 +14,7 @@ from aiogram.utils.exceptions import MessageNotModified
 from states import Info, Editing, Cards
 from core.config import settings
 from core.phrases import phrases, add_emoji, display_summary, card_summary
-
-from core.validation import validate_charset, validate_name, name_in_names
+from core.validation import validate_amount
 
 # from keyboards import get_country_keyboard
 from db.data import db_dict, filter_data
@@ -166,7 +165,6 @@ async def inline_kb_creating(
                                       reply_markup=create_menu(table_type='country', data=data, btns_in_row=2))
 
 
-# @dp.message_handler(state=Editing.country)
 @dp.callback_query_handler(vote_cb.filter(action='country'), state='*')
 async def new_entry_account_manager(message: types.Message,
                                     state: FSMContext,
@@ -184,7 +182,6 @@ async def new_entry_account_manager(message: types.Message,
         await Editing.next()
 
 
-# @dp.message_handler(state=Editing.city)
 @dp.callback_query_handler(vote_cb.filter(action='city'), state='*')
 async def new_entry_account_manager(message: types.Message,
                                     state: FSMContext,
@@ -214,7 +211,6 @@ def get_operation_type(currency):
     return 'BUY'
 
 
-# @dp.message_handler(state=Editing.currency_to_sell)
 @dp.callback_query_handler(vote_cb.filter(action='currency_to_sell'), state='*')
 async def new_entry_account_manager(message: types.Message,
                                     state: FSMContext,
@@ -240,7 +236,6 @@ async def new_entry_account_manager(message: types.Message,
         #     await Editing.currency_to_sell.set()
 
 
-# @dp.message_handler(state=Editing.currency_to_buy)
 @dp.callback_query_handler(vote_cb.filter(action='currency_to_buy'), state='*')
 async def new_entry_account_manager(message: types.Message,
                                     state: FSMContext,
@@ -273,7 +268,24 @@ async def new_entry_account_manager(message: types.Message,
         await Editing.next()
 
 
-@dp.message_handler(state=Editing.amount)
+@dp.message_handler(lambda message: not validate_amount(message.text), state=[Editing.amount, Cards.amount])
+# @dp.callback_query_handler(vote_cb.filter(action='amount'), state='*')
+async def process_amount_invalid(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        query = data.get('query')
+        await delete_msg(message.chat.id, message.message_id)
+        if await state.get_state() == 'Editing:amount':
+            await query.message.edit_text(
+                display_summary(phrase=phrases.err_amount, data=data),
+                reply_markup=create_menu(prev_action='currency_to_buy'))
+        else:
+            await query.message.edit_text(
+                card_summary(phrase=phrases.err_amount, data=data),
+                reply_markup=create_menu(prev_action='card_currency_buy'))
+
+
+@dp.message_handler(lambda message: validate_amount(message.text), state=Editing.amount)
+# @dp.message_handler(state=Editing.amount)
 @dp.callback_query_handler(vote_cb.filter(action='amount'), state='*')
 async def new_entry_account_manager(message: types.Message,
                                     state: FSMContext,
@@ -281,20 +293,13 @@ async def new_entry_account_manager(message: types.Message,
     async with state.proxy() as data:
         query = data.get('query')
 
+        # TODO probably useless
         cur_state = await state.get_state()
         # print(cur_state)
-        # TODO probably useless
         if cur_state == 'Editing:amount':
-            input_amount = message.text
-            try:
-                input_amount = float(input_amount)
-            except:
-                await delete_msg(message.chat.id, message.message_id)
-                await query.message.edit_text(
-                    display_summary(phrase=phrases.err_amount, data=data),
-                    reply_markup=create_menu(prev_action='currency_to_buy'))
-                return
-            data['amount'] = input_amount
+            data['amount'] = float(message.text)
+            # await state.update_data(amount=float(message.text))
+            input_amount = float(message.text)
 
             if data.get('country') == 'Турция' and data.get('currency_to_sell') == 'USDT':
                 if input_amount / 0.95238 < 5000:
@@ -313,7 +318,6 @@ async def new_entry_account_manager(message: types.Message,
         await Editing.next()
 
 
-# @dp.message_handler(state=Editing.date)
 @dp.callback_query_handler(vote_cb.filter(action='date'), state='*')
 async def new_entry_account_manager(message: types.Message,
                                     state: FSMContext,
@@ -331,7 +335,6 @@ async def new_entry_account_manager(message: types.Message,
         await Editing.next()
 
 
-# @dp.message_handler(state=Editing.time)
 @dp.callback_query_handler(vote_cb.filter(action='time'), state='*')
 async def new_entry_account_manager(message: types.Message,
                                     state: FSMContext,
@@ -349,7 +352,6 @@ async def new_entry_account_manager(message: types.Message,
         await Editing.next()
 
 
-# @dp.message_handler(state=Editing.confirmation)
 @dp.callback_query_handler(vote_cb.filter(action='conf'), state='*')
 async def new_entry_account_manager(message: types.Message,
                                     state: FSMContext,
@@ -395,7 +397,6 @@ async def new_entry_account_manager(message: types.Message,
         await Cards.next()
 
 
-# @dp.message_handler(state=Cards.currency_to_sell)
 @dp.callback_query_handler(vote_cb.filter(action='card_currency_sell'), state='*')
 # @dp.callback_query_handler(vote_cb.filter(action='card_currency_sell'), state=Cards.currency_to_sell)
 async def new_entry_account_manager(message: types.Message,
@@ -419,7 +420,6 @@ async def new_entry_account_manager(message: types.Message,
         await Cards.next()
 
 
-# @dp.message_handler(state=Cards.currency_to_buy)
 @dp.callback_query_handler(vote_cb.filter(action='card_currency_buy'), state='*')
 async def new_entry_account_manager(message: types.Message,
                                     state: FSMContext,
@@ -460,15 +460,9 @@ async def new_entry_account_manager(message: types.Message,
         cur_state = await state.get_state()
         if cur_state == 'Cards:amount':
             input_amount = message.text
-            try:
-                float(input_amount)
-            except:
-                await delete_msg(message.chat.id, message.message_id)
-                await query.message.edit_text(
-                    card_summary(phrase=phrases.err_amount, data=data),
-                    reply_markup=create_menu(prev_action='card_currency_buy'))
-                return
-            data['amount'] = input_amount
+            # await state.update_data(amount=float(message.text))
+            data['amount'] = float(message.text)
+
             price = calculate_price_card(data.get('operation_type'), data.get('currency_to_sell'),
                                          data.get('currency_to_buy'), input_amount)
             if data.get('price') != price:
@@ -486,7 +480,6 @@ async def new_entry_account_manager(message: types.Message,
         await Cards.next()
 
 
-# @dp.message_handler(state=Cards.confirmation)
 @dp.callback_query_handler(vote_cb.filter(action='card_conf'), state='*')
 async def new_entry_account_manager(message: types.Message,
                                     state: FSMContext,

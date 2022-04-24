@@ -57,7 +57,9 @@ def get_price(asset: str, fiat: str, side: str = "BUY", p_type: str = None) -> f
     data['fiat'] = fiat
     data['tradeType'] = side
     if p_type:
-        data['payTypes'] = [p_type]
+        data['payTypes'].append(p_type)
+    else:
+        data['payTypes'].clear()
     r = requests.post('https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search',
             headers=headers,
             json=data)
@@ -68,6 +70,8 @@ def get_price(asset: str, fiat: str, side: str = "BUY", p_type: str = None) -> f
         return 0
 
 
+# print(get_price('BTC', 'USD', 'BUY', 'Tinkoff'))
+# print(get_price('BTC', 'USD', 'BUY'))
 # price = float(get_price(cur_buy, cur_sell, 'BUY', 'Tinkoff'))
 # price = float(get_price(cur_sell, cur_buy, 'SELL', 'Tinkoff'))
 # price = float(get_price(cur_buy, cur_sell, 'BUY', 'ziraat'))

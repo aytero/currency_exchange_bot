@@ -5,12 +5,13 @@ from babel.dates import format_date
 dates = [format_date((date.today() + timedelta(days=i)), 'd MMMM', locale='ru') for i in range(12)]
 
 
-time_slots = ["8.00 - 10.00",
-              "10.00 - 12.00",
-              "12.00 - 14.00",
-              "14.00 - 16.00",
-              "16.00 - 18.00",
-              ]
+time_slots = [
+    "8.00 - 10.00",
+    "10.00 - 12.00",
+    "12.00 - 14.00",
+    "14.00 - 16.00",
+    "16.00 - 18.00",
+]
 
 
 all_fiat = ['RUB', 'USD', 'EUR', 'TRY', 'GEL', 'AMD']

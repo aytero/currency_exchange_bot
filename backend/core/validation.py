@@ -5,6 +5,18 @@ def is_admin(name: str) -> bool:
     return name in ['TONYPONY', 'aytero']
 
 
+def validate_amount(msg: str) -> bool:
+    try:
+        amount = float(msg)
+    except:
+        return False
+        # logger.rrr
+
+    if amount <= 0:
+        return False
+    return True
+
+
 def validate_charset(name):
     pattern = re.compile("^[А-Яа-я]+(( [А-Яа-я]+)|(-[А-Яа-я]+))*$")
     if pattern.match(name):
